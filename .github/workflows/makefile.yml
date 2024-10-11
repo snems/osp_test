@@ -23,4 +23,4 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ github.ref }}
           overwrite: true
-          file: ./build/linux-qvm/zz-osp-pak8.pk3
+          file: zz-osp-pak8.pk3
