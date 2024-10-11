@@ -25,5 +25,4 @@ jobs:
         automatic_release_tag: "latest"
         prerelease: false
         title: Latest Build
-        files: |
-          *.pk3
+        file: zz-osp-pak8.pk3
