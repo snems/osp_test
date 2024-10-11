@@ -19,10 +19,9 @@ jobs:
       working-directory: ./build/linux-qvm
       
     - name: Create latest build
-      uses: svenstaro/upload-release-action@latest
+      uses: "svenstaro/upload-release-action@latest"
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
-        automatic_release_tag: "latest"
-        prerelease: false
-        title: Latest Build
-        file: zz-osp-pak8.pk3
+        tag: ${{ github.ref }}
+        overwrite: true
+        file: ${{ matrix.artifact_name }}
