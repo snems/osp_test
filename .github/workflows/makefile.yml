@@ -10,12 +10,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Download Artifacts
-        uses: actions/download-artifact@v4
-  
+      - uses: actions/checkout@v4
+        
       - name: build
         run: make
-        working-directory: ./build/linux-qvm
+        working-directory: build/linux-qvm
 
       - name: Upload archive
         uses: "svenstaro/upload-release-action@latest"
