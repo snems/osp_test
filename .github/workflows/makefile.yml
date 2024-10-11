@@ -17,3 +17,12 @@ jobs:
     - name: build
       run: make
       working-directory: ./build/linux-qvm
+      
+    - name: Create latest build
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        automatic_release_tag: "latest"
+        prerelease: false
+        title: Latest Build
+        files: |
+          *.pk3
