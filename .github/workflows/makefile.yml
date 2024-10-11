@@ -8,20 +8,19 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v4
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+  
+      - name: build
+        run: make
+        working-directory: ./build/linux-qvm
 
-    - name: build
-      run: make
-      working-directory: ./build/linux-qvm
-      
-    - name: Create latest build
-      uses: "svenstaro/upload-release-action@latest"
-      with:
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        tag: ${{ github.ref }}
-        overwrite: true
-        file: ${{ matrix.artifact_name }}
+      - name: Upload archive
+        uses: "svenstaro/upload-release-action@latest"
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ github.ref }}
+          overwrite: true
+          file: ./build/linux-qvm/zz-osp-pak8.pk3
