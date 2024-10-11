@@ -19,6 +19,7 @@ jobs:
       working-directory: ./build/linux-qvm
       
     - name: Create latest build
+      uses: svenstaro/upload-release-action@latest
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         automatic_release_tag: "latest"
