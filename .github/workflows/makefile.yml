@@ -33,8 +33,8 @@ jobs:
   create-latest:
     if: github.ref == 'refs/heads/master' && github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     needs: [linux-qvm]
-    permissions:
-      contents: write
+ #   permissions:
+ #    contents: write
     runs-on: ubuntu-latest
     steps:
       - name: Download Artifacts
@@ -49,3 +49,21 @@ jobs:
           title: Latest Build
           files: |
             *.pk3
+
+            # update-release:
+            #   if: ${{ github.event_name == 'release' }}
+            #   needs: [linux-qvm]
+            #   runs-on: ubuntu-latest
+
+            #   steps:
+            #     - name: Download Artifacts
+            #       uses: actions/download-artifact@v4
+
+            #     - name: Upload archive
+            #       uses: "svenstaro/upload-release-action@latest"
+            #       with:
+            #         repo_token: ${{ secrets.GITHUB_TOKEN }}
+            #         tag: ${{ github.ref }}
+            #         overwrite: true
+            #         file: zz-osp-pak8.pk3
+
