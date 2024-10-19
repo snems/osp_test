@@ -7,57 +7,9 @@ on:
     branches: [ "master" ]
 
 jobs:
-  #  build:
-  #    permissions:
-  #      contents: write
-  #    runs-on: ubuntu-latest
-  #    steps:
-  #      - uses: actions/checkout@v4
-  #        
-  #      - name: build
-  #        run: make
-  #        working-directory: build/linux-qvm
-  #
-  #  update-latest:
-  #    if: github.ref == 'refs/heads/master' && github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-  #    permissions:
-  #      contents: write
-  #    needs: [build]
-  #    runs-on: ubuntu-latest
-  #    steps:
-  #      - name: Download Artifacts
-  #        uses: actions/download-artifact@v4
-  #
-  #      - name: Create latest build
-  #        uses: czietz/action-automatic-releases@latest
-  #        with:
-  #          repo_token: ${{ secrets.GITHUB_TOKEN }}
-  #          automatic_release_tag: "latest"
-  #          prerelease: false
-  #          title: Latest Build
-  #          files: |
- linux-qvm:
+  linux-qvm:
    #name: ${{ matrix.btype }} Ubuntu ${{ matrix.arch }}
     runs-on: ubuntu-latest
-      #strategy:
-      #  fail-fast: false
-      #  matrix:
-      #    arch: [x86, x86_64]
-      #    cc: [gcc]
-      #    btype: [Release, Debug]
-      #    include:
-      #      - btype: Release
-      #        rule: install
-
-      #      - btype: Debug
-      #        if: ${{ github.event_name != 'release' }}
-      #        rule: debug
-
-      #      - arch: x86
-      #        use_sdl: USE_SDL=0
-
-      #      - arch: x86_64
-      #        use_sdl: USE_SDL=1
 
     steps:
 
@@ -78,3 +30,20 @@ jobs:
         if-no-files-found: error
         retention-days: 5
 
+          #  create-testing:
+          #    if: github.ref == 'refs/heads/master' && github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+          #    needs: [linux-qvm]
+          #    runs-on: ubuntu-latest
+          #    steps:
+          #      - name: Download Artifacts
+          #        uses: actions/download-artifact@v4
+          #
+          #      - name: Create latest build
+          #        uses: czietz/action-automatic-releases@latest
+          #        with:
+          #          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          #          automatic_release_tag: "latest"
+          #          prerelease: false
+          #          title: Latest Build
+          #          files: |
+          #            build/linux-qvm/zz-osp-pak8.pk3
