@@ -3,12 +3,25 @@ name: Makefile CI
 on:
   push:
     branches: [ "master" ]
+    paths-ignore:
+      - '**.md'
+      - '*.txt'
+      - '.gitignore'
+      - 'docs/*'
+      - 'build/*'
+      - 'util/*'
   pull_request:
     branches: [ "master" ]
+    paths-ignore:
+      - '**.md'
+      - '*.txt'
+      - '.gitignore'
+      - 'docs/*'
+      - 'build/*'
+      - 'util/*'
 
 jobs:
   linux-qvm:
-   #name: ${{ matrix.btype }} Ubuntu ${{ matrix.arch }}
     runs-on: ubuntu-latest
 
     steps:
@@ -23,7 +36,6 @@ jobs:
         make
 
     - uses: actions/upload-artifact@v4
-      #if: matrix.cc == 'gcc' && matrix.btype == 'release'
       with:
         name: qvm
         path: build/linux-qvm/zz-osp-pak8.pk3
@@ -45,7 +57,6 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           automatic_release_tag: "latest"
           prerelease: false
-          overwrite: true
           title: Latest Build
           files: |
             qvm
