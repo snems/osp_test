@@ -25,8 +25,8 @@ jobs:
     - uses: actions/upload-artifact@v4
       #if: matrix.cc == 'gcc' && matrix.btype == 'release'
       with:
-        name: qvm
-        path: build/linux-qvm/*.pk3
+        name: zz-osp-pak8.pk3
+        path: build/linux-qvm/zz-osp-pak8.pk3
         if-no-files-found: error
         retention-days: 5
 
@@ -48,7 +48,7 @@ jobs:
           overwrite: true
           title: Latest Build
           files: |
-            qvm
+            zz-osp-pak8.pk3
 
             #  update-release:
             #    if: ${{ github.event_name == 'release' }}
