@@ -88,6 +88,11 @@ typedef struct
 	} color;
 	struct
 	{
+		superhudColor_t value;
+		qboolean isSet;
+	} color2;
+	struct
+	{
 		superhudDirection_t value;
 		qboolean isSet;
 	} direction;
@@ -160,6 +165,11 @@ typedef struct
 	} rect;
 	struct
 	{
+		int value;
+		qboolean isSet;
+	} style;
+	struct
+	{
 		char value[MAX_QPATH];
 		qboolean isSet;
 	} text;
@@ -185,7 +195,7 @@ typedef struct
 	} time;
 	struct
 	{
-		char value[MAX_QPATH];
+		int value;
 		qboolean isSet;
 	} visflags;
 	struct
@@ -243,12 +253,27 @@ typedef enum
 	SUPERHUD_CONFIG_LOST_ELEMENT_BODY,
 } superhudConfigParseStatus_t;
 
-
 #define SE_IM         0x00000001 // available in intermission view
+#define SE_IM_STR "im"
 #define SE_TEAM_ONLY  0x00000002 // team only
+#define SE_TEAM_ONLY_STR "teamonly"
 #define SE_SPECT      0x00000004 // available in spectator and not folowing view
+#define SE_SPECT_STR      "spectator"
 #define SE_DEAD       0x00000008 // available if dead or freeze
-#define SE_SCORES     0x00000010 // available if scores visible
+#define SE_DEAD_STR       "dead"
+#define SE_DEMO_HIDE  0x00000010 // hide when playing demo
+#define SE_DEMO_HIDE_STR  "demohide"
+#define SE_SCORES_HIDE  0x00000020 // hide when scores visible
+#define SE_SCORES_HIDE_STR  "scoreshide"
+
+#define SE_KEY1_SHOW  0x00000040 // show if key pressed
+#define SE_KEY1_SHOW_STR  "key1show"
+#define SE_KEY2_SHOW  0x00000080 // show if key pressed
+#define SE_KEY2_SHOW_STR  "key2show"
+#define SE_KEY3_SHOW  0x00000100 // show if key pressed
+#define SE_KEY3_SHOW_STR  "key3show"
+#define SE_KEY4_SHOW  0x00000200 // show if key pressed
+#define SE_KEY4_SHOW_STR  "key4show"
 
 typedef struct superHUDConfigElement_s
 {
@@ -518,6 +543,32 @@ void* CG_SHUDElementWeaponListCreate(const superhudConfig_t* config);
 void CG_SHUDElementWeaponListRoutine(void* context);
 void CG_SHUDElementWeaponListDestroy(void* context);
 
+void* CG_SHUDElementObituaries1Create(const superhudConfig_t* config);
+void* CG_SHUDElementObituaries2Create(const superhudConfig_t* config);
+void* CG_SHUDElementObituaries3Create(const superhudConfig_t* config);
+void* CG_SHUDElementObituaries4Create(const superhudConfig_t* config);
+void* CG_SHUDElementObituaries5Create(const superhudConfig_t* config);
+void* CG_SHUDElementObituaries6Create(const superhudConfig_t* config);
+void* CG_SHUDElementObituaries7Create(const superhudConfig_t* config);
+void* CG_SHUDElementObituaries8Create(const superhudConfig_t* config);
+void CG_SHUDElementObituariesRoutine(void* context);
+void CG_SHUDElementObituariesDestroy(void* context);
+
+void* CG_SHUDElementTempAccCurrentCreate(const superhudConfig_t* config);
+void* CG_SHUDElementTempAccLastCreate(const superhudConfig_t* config);
+void CG_SHUDElementTempAccRoutine(void* context);
+void CG_SHUDElementTempAccDestroy(void* context);
+
+void* CG_SHUDElementWarmupInfoCreate(const superhudConfig_t* config);
+void CG_SHUDElementWarmupInfoRoutine(void* context);
+void CG_SHUDElementWarmupInfoDestroy(void* context);
+void* CG_SHUDElementGameTypeCreate(const superhudConfig_t* config);
+void CG_SHUDElementGameTypeRoutine(void* context);
+void CG_SHUDElementGameTypeDestroy(void* context);
+
+void* CG_SHUDElementLocationCreate(const superhudConfig_t* config);
+void CG_SHUDElementLocationRoutine(void* context);
+void CG_SHUDElementLocationDestroy(void* context);
 
 /*
  * cg_superhud_util.c
@@ -540,7 +591,8 @@ typedef struct
 	int flags;
 	vec4_t color_origin;
 	vec4_t color;
-	int maxchars;
+	vec4_t background;
+	int width;
 	int fontIndex;
 	const char* text;
 } superhudTextContext_t;
@@ -561,6 +613,7 @@ typedef struct
 	float koeff; //multiplier
 	vec4_t bar[2]; // coord of two bars
 	vec4_t color_top; // color of bar
+	vec4_t color2_top; // color of top bar of doublebar
 	vec4_t color_back; // color of background
 	qboolean two_bars; // one or two bars
 } superhudBarContext_t;
@@ -618,6 +671,34 @@ typedef struct
 	int time;
 } superhudChatEntry_t;
 
+typedef struct
+{
+	int time;
+	int attacker;
+	int target;
+	int attackerTeam;
+	int targetTeam;
+	int mod;
+	qboolean unfrozen;
+	struct
+	{
+		qboolean isInitialized;
+		qhandle_t iconShader;
+		vec4_t attackerColor;
+		vec4_t targetColor;
+		vec4_t enemyColor;
+		char attackerName[MAX_QPATH];
+		char targetName[MAX_QPATH];
+		int maxVisibleChars;
+		float baseX;
+		float attackerWidth;
+		float targetWidth;
+		float spacing;
+		int maxNameLenPix;
+	} runtime;
+} superhudObituariesEntry_t;
+
+#define SHUD_MAX_OBITUARIES_LINES 8
 #define SHUD_MAX_CHAT_LINES 16
 #define SHUD_MAX_POWERUPS 8
 
@@ -638,12 +719,18 @@ typedef struct
 		superhudChatEntry_t line[SHUD_MAX_CHAT_LINES];
 		unsigned int index;
 	} chat;
+	struct
+	{
+		superhudObituariesEntry_t line[SHUD_MAX_OBITUARIES_LINES];
+		unsigned int index;
+	} obituaries;
 	struct superhudPowerupsCache_t
 	{
 		struct superhudPowerupElement_t
 		{
 			int time;
 			int powerup;
+			qboolean isHoldable;
 		} element[SHUD_MAX_POWERUPS];
 		int numberOfActive;
 		int lastUpdateTime;
@@ -653,6 +740,8 @@ typedef struct
 superhudGlobalContext_t* CG_SHUDGetContext(void);
 void CG_SHUDAvailableElementsInit(void);
 const superHUDConfigElement_t* CG_SHUDAvailableElementsGet(void);
+
+int CG_SHUDGetAmmo(int wpi);
 
 
 #ifdef __cplusplus

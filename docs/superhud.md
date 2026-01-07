@@ -49,6 +49,7 @@ ELEMENT { ELEMENT_COMMAND VALUE; ELEMENT_COMMAND VALUE; }
 | Name_OWN                      | Свое имя или имя команды.                                    |
 | NetGraph                      | Лагометр.                                                    |
 | NetGraphPing                  | Ping.                                                        |
+| Obituary1 - Obituary8         | Некролог (сообщения о смертях)                               |
 | PlayerSpeed                   | Скорость игрока.                                             |
 | Powerup1_icon - Powerup8_icon | Иконка поверапа.                                             |
 | Powerup1_time - Powerup8_time | Оставшееся время действия поверапа.                          |
@@ -76,6 +77,9 @@ ELEMENT { ELEMENT_COMMAND VALUE; ELEMENT_COMMAND VALUE; }
 | RewardIcons                   | Изображение полученной медали.                               |
 | RewardNumbers                 | Счетчик полученных медалей.                                  |
 | PostDecorate                  | Отрисовка разделителей и т.п.                                |
+| WarmupInfo                    | Обратный отсчет/"waiting for players".                       |
+| GameType                      | Режим игры(только во время warmup).                          |
+| Location                      | Сообщение с названием локации при ее изменении.              |
 
 ## Команды
 
@@ -86,6 +90,7 @@ ELEMENT { ELEMENT_COMMAND VALUE; ELEMENT_COMMAND VALUE; }
 | AlignV    | T/C/B          | Выравнивание по вертикали верх/центр/низ                  |
 | BgColor   | r g b a        | Цвет фона.                                                |
 | Color     | r g b a        | Базовый цвет.                                             |
+| Color2    | r g b a        | Второстепенный цвет.                                      |
 | Color     | T              | Цвет команды.                                             |
 | Color     | E              | Цвет вражеской команды.                                   |
 | Direction | L/R/T/B        | Направление: лево->право/право->лево/верх->низ/низ->верх. |
@@ -102,7 +107,8 @@ ELEMENT { ELEMENT_COMMAND VALUE; ELEMENT_COMMAND VALUE; }
 | Textalign | L/C/R          | Выравнивание текста лево/центр/право.                     |
 | Textstyle | flags          | Флаги текста. 1 - без тени.                               |
 | Time      | milliseconds   | Время отображения на экране.                              |
-
+| Style     | flags          | Стиль элемента - цифра                                    |
+| VisFlags  | string         | Изменить дефолтные настройки видимости                    |
 
 ## Пояснения к некоторым элементам
 
@@ -114,13 +120,55 @@ ELEMENT { ELEMENT_COMMAND VALUE; ELEMENT_COMMAND VALUE; }
 
 Сообщение появляется сначала в Сhat1 и по мере поступления новых сообщений сдвигается в следующие элементы.
 
+### Font
+
+Доступные шрифты:
+
+- id
+- idblock
+- sansman
+- m1rage
+- elite_emoji
+- diablo
+- eternal
+- qlnumbers
+- elite
+- elitebigchars
+
 ### WeaponList 
 
-Список оружия. Командой `Rect` указывается размер иконки одного оружия. Размер текстового поля определяется автоматически исходя из размера шрифта. 
-Для выбора типа списка (левый/правый/горизонтальный) используется команда `TextAlign`.
+### ObituaryN 
+
+Стили фона для командных режимов:
+
+- style 0 - без фона 
+- style 1 - фон в цвет команды
+- style 2 - фон в цвет команды только для врагов 
+- style 3 - фон в цвет enemy colors (legs)
+- style 4 - фон в цвет команды для команды игрока
 
 ### StatusBar_HealthBar StatusBar_ArmorBar StatusBar_AmmoBar
 
 - Doublebar - включить двойную полосу
 - Direction - Направление полосы
 
+Только для здоровья и брони:
+- Style 1 - цвет зависит от хп, 2 - обе полосы в одном месте, цвет задаётся через color и color2,  
+
+### VisFlags 
+
+Варианты: 
+- im - видно в режиме intermission
+- teamonly - видно в только в командных режимах
+- spectator - видно в режиме спектатора
+- dead - видно если игрок мертв
+- demohide - скрывать в режиме просмотра демо
+- scoreshide - скрывать в режиме просмотра счета
+- key1show - скрывать если не нажата кнопка +shudkey1
+- key2show - скрывать если не нажата кнопка +shudkey2
+- key3show - скрывать если не нажата кнопка +shudkey3
+- key4show - скрывать если не нажата кнопка +shudkey4
+
+Можно указывать несколько вариантов через пробел:
+
+    visflags teamonly key1show;

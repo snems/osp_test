@@ -35,6 +35,6 @@
 2024-10-10 v0.05
            Promode support
            Crosshair decor and animation 
-           cg_drawdamage 2
+           cg_damageDraw 2
            minor bug fixes
 

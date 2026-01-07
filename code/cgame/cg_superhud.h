@@ -14,6 +14,9 @@ void CG_SHUDRoutine(void);
 void CG_SHUDEventFrag(const char* message);
 void CG_SHUDEventChat(const char* message);
 void CG_SHUDEventTeamChat(const char* message);
+void CG_SHUDEventObituaries(int attacker, int target, int mod, qboolean unfrozen);
+
+void CG_SHUDChatRestore(void);
 
 #ifdef __cplusplus
 }

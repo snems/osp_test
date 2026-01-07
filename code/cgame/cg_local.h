@@ -84,8 +84,8 @@ extern "C" {
 #define GIANT_WIDTH         32
 #define GIANT_HEIGHT        48
 
-#define NUM_CROSSHAIRS      73
-#define NUM_DECORS          26
+#define NUM_CROSSHAIRS      80
+#define NUM_DECORS          33
 
 #define TEAM_OVERLAY_MAXNAME_WIDTH  12
 #define TEAM_OVERLAY_MAXLOCATION_WIDTH  16
@@ -445,6 +445,7 @@ typedef struct weaponInfo_s
 	sfxHandle_t     readySound;
 	sfxHandle_t     firingSound;
 	qboolean        loopFireSound;
+	vec3_t          explosionDlightColor;
 } weaponInfo_t;
 
 
@@ -747,6 +748,7 @@ typedef struct
 	qhandle_t   railCoreShaderNoPicMip;
 
 	qhandle_t   lightningShader; //probably removed
+	qhandle_t   firstPersonGun;
 
 	qhandle_t   unk_media_60;
 	qhandle_t   unk_media_61;
@@ -771,8 +773,8 @@ typedef struct
 	qhandle_t   tracerShader;
 	qhandle_t   crosshairShader[NUM_CROSSHAIRS];
 	qhandle_t   crosshairShader45[NUM_CROSSHAIRS];
-	qhandle_t   crosshairDecorShader[NUM_CROSSHAIRS];
-	qhandle_t   crosshairDecorShader45[NUM_CROSSHAIRS];
+	qhandle_t   crosshairDecorShader[NUM_DECORS];
+	qhandle_t   crosshairDecorShader45[NUM_DECORS];
 	int         numberOfCrosshairs;
 	int         numberOfCrosshairDecors;
 	qhandle_t   lagometerShader;
@@ -869,6 +871,18 @@ typedef struct
 	qhandle_t   medalCapture;
 	qhandle_t   blender180Shader;
 
+	//superhud
+	qhandle_t   obituariesGrenadeDirect;
+	qhandle_t   obituariesRocketDirect;
+	qhandle_t   obituariesBFGDirect;
+	qhandle_t   obituariesDrowned;
+	qhandle_t   obituariesMelted;
+	qhandle_t   obituariesLava;
+	qhandle_t   obituariesTelefrag;
+	qhandle_t   obituariesFallenCrashed;
+	qhandle_t   obituariesFalling;
+	qhandle_t   obituariesSkull;
+
 	// sounds
 	sfxHandle_t quadSound;
 	sfxHandle_t tracerSound;
@@ -892,6 +906,7 @@ typedef struct
 	sfxHandle_t teleInSound;
 	sfxHandle_t teleOutSound;
 	sfxHandle_t noAmmoSound;
+	sfxHandle_t lowAmmoSound;
 	sfxHandle_t respawnSound;
 	sfxHandle_t talkSound;
 	sfxHandle_t landSound;
@@ -915,6 +930,7 @@ typedef struct
 	sfxHandle_t hitSoundHighArmor;
 	sfxHandle_t hitSoundLowArmor;
 	sfxHandle_t hitTeamSound;
+	sfxHandle_t gotDamageSound;
 	sfxHandle_t impressiveSound;
 	sfxHandle_t excellentSound;
 	sfxHandle_t deniedSound;
@@ -1047,6 +1063,7 @@ typedef struct cgs_osp_s
 	int numberOfStringsMotd;
 	char motd[8][64];
 
+	char testFont[MAX_QPATH];
 	int custom_gfx_number;
 	int custom_gfx[16][8];
 	qboolean clanBaseTeamDM;
@@ -1085,7 +1102,13 @@ typedef struct cgs_osp_s
 		vec4_t actionColor;
 		vec4_t decorColor;
 		vec4_t decorActionColor;
+		int distance;
 	} crosshair;
+	struct
+	{
+		qboolean forceChat;
+		qboolean key[4];
+	} shud;
 } cgs_osp_t;
 
 
@@ -1304,12 +1327,14 @@ extern vmCvar_t           cg_autoAction;
 extern vmCvar_t           cg_clientLog;
 extern vmCvar_t           cg_crosshairPulse;
 extern vmCvar_t           cg_customLoc;
+extern vmCvar_t           cg_damageSound;
 extern vmCvar_t           cg_damageDraw;
 extern vmCvar_t           cg_damageIndicatorScale;
 extern vmCvar_t           cg_damageIndicatorOpaque;
 extern vmCvar_t           cg_damageKick;
 extern vmCvar_t           cg_deadBodyFilter;
 extern vmCvar_t           cg_deadBodyBlack;
+extern vmCvar_t           cg_deadBodyInvisible;
 extern vmCvar_t           cg_drawDecals;
 extern vmCvar_t           cg_drawPing;
 extern vmCvar_t           cg_enableOSPHUD;
@@ -1317,6 +1342,7 @@ extern vmCvar_t           cg_shud;
 extern vmCvar_t           cg_enableBreath;
 extern vmCvar_t           cg_enemyColors;
 extern vmCvar_t           cg_enemyModel;
+extern vmCvar_t           cg_teamColors;
 extern vmCvar_t           cg_teamModel;
 extern vmCvar_t           cg_execVstr;
 extern vmCvar_t           cg_fallKick;
@@ -1341,6 +1367,8 @@ extern vmCvar_t           cg_smokegrowth_gl;
 extern vmCvar_t           cg_smokegrowth_rl;
 extern vmCvar_t           cg_smokeradius_gl;
 extern vmCvar_t           cg_smokeradius_rl;
+extern vmCvar_t           cg_smokedensity_gl;
+extern vmCvar_t           cg_smokedensity_rl;
 extern vmCvar_t           cg_swapSkins;
 extern vmCvar_t           cg_teamRails;
 extern vmCvar_t           cg_trueLightning;
@@ -1387,6 +1415,7 @@ extern vmCvar_t           ch_Weaponswitch;
 extern vmCvar_t           cf_WeaponSwitch;
 extern vmCvar_t           cf_WeaponName;
 extern vmCvar_t           cf_AmmoStatusbar;
+extern vmCvar_t           cf_timer;
 extern vmCvar_t           s_ambient;
 extern vmCvar_t           cl_maxpackets;
 extern vmCvar_t           cl_timenudge;
@@ -1403,11 +1432,11 @@ extern vmCvar_t           com_maxfps;
 extern vmCvar_t           cg_gun_frame;
 extern vmCvar_t           cg_noLeadSounds;
 extern vmCvar_t           cg_fragSound;
+extern vmCvar_t           cg_lightningHide;
 extern vmCvar_t           cg_lightningHideCrosshair;
 extern vmCvar_t           cg_lightningSilent;
 extern vmCvar_t           cg_delag;
 extern vmCvar_t           cg_drawHitBox;
-extern vmCvar_t           cg_optimizePrediction;
 extern vmCvar_t           cg_projectileNudge;
 extern vmCvar_t           cg_hideScores;
 
@@ -1418,12 +1447,15 @@ extern vmCvar_t           cg_playerFrozenColor;
 extern vmCvar_t           cg_teamModelColors;
 extern vmCvar_t           cg_teamRailColors;
 extern vmCvar_t           cg_teamFrozenColor;
+extern vmCvar_t           cg_teamFrozenFoe;
 
+extern vmCvar_t           cg_enemyModelColorsUnique;
 extern vmCvar_t           cg_enemyModelColors;
 extern vmCvar_t           cg_enemyRailColors;
 extern vmCvar_t           cg_enemyFrozenColor;
 
 extern vmCvar_t           cg_spectGlow;
+extern vmCvar_t           cg_spectOrigModel;
 extern vmCvar_t           cg_hitSounds;
 extern vmCvar_t           cg_playersXID;
 
@@ -1432,6 +1464,7 @@ extern vmCvar_t           cg_shudChatEnable;
 
 extern vmCvar_t           cg_healthMid;
 extern vmCvar_t           cg_healthLow;
+extern vmCvar_t           cg_healthColorLevels;
 
 extern vmCvar_t           ch_crosshairDecor;
 extern vmCvar_t           ch_crosshair45;
@@ -1448,6 +1481,47 @@ extern vmCvar_t           ch_crosshairDecorAction;
 extern vmCvar_t           ch_crosshairDecorActionColor;
 extern vmCvar_t           ch_crosshairDecorActionScale;
 extern vmCvar_t           ch_crosshairDecorActionTime;
+
+extern vmCvar_t           ch_crosshairAutoScale;
+
+extern vmCvar_t           cg_dlightGauntlet;
+extern vmCvar_t           cg_dlightMG;
+extern vmCvar_t           cg_dlightSG;
+extern vmCvar_t           cg_dlightGL;
+extern vmCvar_t           cg_dlightRL;
+extern vmCvar_t           cg_dlightLG;
+extern vmCvar_t           cg_dlightRG;
+extern vmCvar_t           cg_dlightPG;
+extern vmCvar_t           cg_dlightBFG;
+extern vmCvar_t           cg_gunColor;
+extern vmCvar_t           cg_gunOpaque;
+extern vmCvar_t           cg_conObituaries;
+
+extern vmCvar_t           cg_lightningHitsoundRateFix;
+extern vmCvar_t           cg_stackHitSounds;
+extern vmCvar_t           cg_stackHitSoundsTimeout;
+extern vmCvar_t           cg_drawCenterMessages;
+extern vmCvar_t           cg_predictStepOffset;
+extern vmCvar_t           cg_noVoteBeep;
+extern vmCvar_t           cg_itemFx;
+
+extern vmCvar_t           cg_shud_chatindex;
+extern vmCvar_t           cg_shud_chatmsg0;
+extern vmCvar_t           cg_shud_chatmsg1;
+extern vmCvar_t           cg_shud_chatmsg2;
+extern vmCvar_t           cg_shud_chatmsg3;
+extern vmCvar_t           cg_shud_chatmsg4;
+extern vmCvar_t           cg_shud_chatmsg5;
+extern vmCvar_t           cg_shud_chatmsg6;
+extern vmCvar_t           cg_shud_chatmsg7;
+extern vmCvar_t           cg_shud_chatmsg8;
+extern vmCvar_t           cg_shud_chatmsg9;
+extern vmCvar_t           cg_shud_chatmsg10;
+extern vmCvar_t           cg_shud_chatmsg11;
+extern vmCvar_t           cg_shud_chatmsg12;
+extern vmCvar_t           cg_shud_chatmsg13;
+extern vmCvar_t           cg_shud_chatmsg14;
+extern vmCvar_t           cg_shud_chatmsg15;
 
 //
 // cg_main.c
@@ -1492,6 +1566,7 @@ void CG_BuildSpectatorString(void);
 char* CG_OSPGetCvarName(vmCvar_t* cvar) ;
 cvarTable_t* CG_GetCgCvarByName(const char* name);
 void CG_CvarTouch(const char* name);
+void CG_CvarResetToDefault(const char* name);
 
 qhandle_t CG_GetFragSound(void);
 
@@ -1511,6 +1586,7 @@ void CG_AddBufferedSound(sfxHandle_t sfx);
 
 void CG_DrawActiveFrame(int serverTime, stereoFrame_t stereoView, qboolean demoPlayback);
 float CG_DrawLagometer(float pos);
+void CG_SetCvarDescription(const char* name, const char* description);
 
 
 //
@@ -1538,11 +1614,11 @@ void CG_FillRect(float x, float y, float width, float height, const float* color
 void CG_DrawPicOld(float x, float y, float width, float height, qhandle_t hShader);
 void CG_DrawPic(float x, float y, float width, float height, qhandle_t hShader);
 
-float CG_OSPDrawStringLength(const char* string, float ax, float aw, float max_ax, int proportional);
-int CG_OSPDrawStringLenPix(const char* string, float charWidth, int maxChars, int flags);
+float CG_OSPDrawStringLength(const char* string, float ax, float aw, int proportional);
+int CG_OSPDrawStringLenPix(const char* string, float charWidth, int flags, int toWidth);
 
 void CG_OSPDrawStringPrepare(const char* from, char* to, int size);
-void CG_OSPDrawString(float x, float y, const char* string, const vec4_t setColor, float charWidth, float charHeight, int maxChars, int flags);
+void CG_OSPDrawString(float x, float y, const char* string, const vec4_t setColor, float charWidth, float charHeight, int maxWidth, int flags, vec4_t background);
 void CG_FontSelect(int index);
 int CG_FontIndexFromName(const char* name);
 
@@ -1568,7 +1644,7 @@ typedef struct
 	} value;
 } text_command_t;
 
-text_command_t* CG_CompiledTextCreate(const char* text);
+text_command_t* CG_CompileText(const char* text);
 void CG_CompiledTextDestroy(text_command_t* root);
 
 // flags for CG_DrawString
@@ -1590,10 +1666,9 @@ void CG_LoadFonts(void);
 
 void CG_DrawStringExt(int x, int y, const char* string, const float* setColor,
                       qboolean forceColor, qboolean shadow, int charWidth, int charHeight, int maxChars);
-void CG_DrawBigString(int x, int y, const char* s, float alpha);
-void CG_DrawBigStringColor(int x, int y, const char* s, vec4_t color);
-void CG_DrawSmallString(int x, int y, const char* s, float alpha);
-void CG_DrawSmallStringColor(int x, int y, const char* s, vec4_t color);
+void CG_DrawBigString(int x, int y, const char* s, const float alpha, int flags, int font);
+void CG_DrawSmallString(int x, int y, const char* s, float alpha, int flags, int font);
+void CG_DrawSmallStringColor(int x, int y, const char* s, vec4_t color, int flags, int font);
 
 int CG_DrawStrlen(const char* str);
 
@@ -1622,13 +1697,13 @@ typedef struct
 	int charHeight;
 	int charWidth;
 	int maxStringLen;
-	int time_a;
+	int hideBeforeRealtime;
 	int numberOfStrings;
-	int time_b;
+	int hideBeforeCGTime;
 	int timeAppearance;
 	int timeShow;
 	int timeHiding;
-	int time_c;
+	int showFromCGTime;
 	int windowPosX;
 	char string[24][128];
 	vec4_t borderColor;
@@ -1779,6 +1854,8 @@ void CG_DrawWeaponSelect(void);
 
 void CG_OutOfAmmoChange(void);   // should this be in pmove?
 
+void CG_UpdateWeaponDlightColor(weapon_t weapon);
+
 //
 // cg_marks.c
 //
@@ -1884,6 +1961,13 @@ const char* CG_CustomLocationsGetName(const float* pos);
 void CG_CustomLocationsSetLocation(const char* info, vec3_t loc);
 qboolean CG_CustomLocationsTeamChatCode(const char* str, vec3_t cloc, char** cloc_begin, char** cloc_end);
 void CG_CustomLocationsAddEntry(vec3_t pos, const char* str);
+void CG_InitCTFLocations(void);
+const char* CG_GetCTFLocation(int loc);
+
+//
+// cg_cvardescriptions.c
+//
+void CG_RegisterCvarDescriptions(void);
 //===============================================
 
 //
@@ -1893,6 +1977,16 @@ void CG_CustomLocationsAddEntry(vec3_t pos, const char* str);
 
 // print message on the local console
 void        trap_Print(const char* fmt);
+
+#ifndef Q3_VM
+
+// Special functions to call from native VM. Fixes segmentation fault in Q3E.
+
+// Use them as wrappers, pass acquired function address to `cmd` to make actual call.
+int     trap_CG_GetValue_Q3E(int cmd, char* value, int valueSize, const char* key);
+int     trap_CG_SetDescription_Q3E(int cmd, const char* name, const char* description);
+
+#endif
 
 // abort the game
 void        trap_Error(const char* fmt);
@@ -2092,7 +2186,7 @@ int CG_NewParticleArea(int num);
 
 qboolean CG_DrawIntermission(void);
 /*************************************************************************************************/
-#define OSP_VERSION "0.05"
+#define OSP_VERSION "0.06-test"
 
 
 //
@@ -2104,6 +2198,7 @@ extern float modeShotgunKoeff;
 extern int wstatsWndId;
 extern qboolean wstatsEnabled;
 extern const char* weaponNames[10];
+extern const char* weaponShortNames[10];
 extern int global_viewlistFirstOption;
 extern int statsInfo[24];
 
@@ -2218,7 +2313,13 @@ void CG_PlayerColorsFromCS(playerColors_t* colors, playerColorsOverride_t* overr
 // cg_chatfilter.c
 //
 #define CG_CHATFILTER_DEFAULT_FILE "chatfilter"
-qboolean CG_ChatIsMessageAllowed(const char* message);
+typedef enum
+{
+	MESSAGE_NOTALLOWED,
+	MESSAGE_ALLOWED_PLAYER,
+	MESSAGE_ALLOWED_OTHER,
+} messageAllowed_t;
+messageAllowed_t CG_ChatCheckMessageAllowed(const char* message);
 void CG_ChatfilterLoadFile(const char* filename);
 void CG_ChatfilterSaveFile(const char* filename);
 void CG_ChatfilterAddName(const char* name);
@@ -2253,6 +2354,7 @@ void CG_LocalEventCvarChanged_r_fullbright(cvarTable_t* cvart);
 void CG_LocalEventCvarChanged_cg_swapSkins(cvarTable_t* cvart);
 void CG_LocalEventCvarChanged_cg_enemyColors(cvarTable_t* cvart);
 void CG_LocalEventCvarChanged_cg_enemyModel(cvarTable_t* cvart);
+void CG_LocalEventCvarChanged_cg_teamColors(cvarTable_t* cvart);
 void CG_LocalEventCvarChanged_cg_teamModel(cvarTable_t* cvart);
 
 void CG_LocalEventCvarChanged_handicap(cvarTable_t* cvart);
@@ -2287,6 +2389,16 @@ void CG_LocalEventCvarChanged_ch_crosshairActionTime(cvarTable_t* cvart);
 void CG_LocalEventCvarChanged_ch_crosshairDecorActionTime(cvarTable_t* cvart);
 void CG_LocalEventCvarChanged_cg_damageIndicatorOpaque(cvarTable_t* cvart);
 
+void CG_LocalEventCvarChanged_cg_dlightGauntlet(cvarTable_t* cvart);
+void CG_LocalEventCvarChanged_cg_dlightMG(cvarTable_t* cvart);
+void CG_LocalEventCvarChanged_cg_dlightSG(cvarTable_t* cvart);
+void CG_LocalEventCvarChanged_cg_dlightGL(cvarTable_t* cvart);
+void CG_LocalEventCvarChanged_cg_dlightRL(cvarTable_t* cvart);
+void CG_LocalEventCvarChanged_cg_dlightLG(cvarTable_t* cvart);
+void CG_LocalEventCvarChanged_cg_dlightRG(cvarTable_t* cvart);
+void CG_LocalEventCvarChanged_cg_dlightPG(cvarTable_t* cvart);
+void CG_LocalEventCvarChanged_cg_dlightBFG(cvarTable_t* cvart);
+void CG_LocalEventCvarChanged_cg_conObituaries(cvarTable_t* cvart);
 #ifdef __cplusplus
 }
 #endif
