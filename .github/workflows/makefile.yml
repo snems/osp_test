@@ -85,8 +85,8 @@ jobs:
           prerelease: false
           title: Latest Build
           files: |
-            *.pk3
-            *.so
+            qvm
+            so
 
 
 
