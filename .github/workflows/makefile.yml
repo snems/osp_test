@@ -100,8 +100,8 @@ jobs:
           prerelease: false
           title: Latest Build
           files: |
-            zip
-            tar.gz
+            osp2_windows
+            osp2_linux
 
 
 
