@@ -415,7 +415,6 @@ void CG_SHUDEventChat(const char* message)
 
 void CG_SHUDEventTeamChat(const char* message)
 {
-	int len = 0;
 	char* loc_start;
 	char* loc_end;
 	char* p;
@@ -430,7 +429,7 @@ void CG_SHUDEventTeamChat(const char* message)
 
 	if (customLocationsEnabled != 0)
 	{
-		char* cloc_begin, *cloc_end;
+		char* cloc_begin, * cloc_end;
 		int free_left;
 		vec3_t cloc;
 		if (CG_CustomLocationsTeamChatCode(message, cloc, &cloc_begin, &cloc_end))
@@ -485,7 +484,6 @@ void CG_SHUDEventTeamChat(const char* message)
 			continue;
 		}
 		*p++ = *message++;
-		len++;
 	}
 
 	*p = 0;
