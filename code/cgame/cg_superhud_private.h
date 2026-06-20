@@ -302,11 +302,10 @@ typedef struct superhudElement_s
 }
 superhudElement_t;
 
-typedef struct superHUDConfigCommand_s
+typedef struct
 {
 	const char* name;
 	superhudConfigParseStatus_t (*parse)(configFileInfo_t* finfo, superhudConfig_t* config);
-	struct superHUDConfigCommand_s* next;
 } superHUDConfigCommand_t;
 
 typedef struct
@@ -330,6 +329,7 @@ typedef struct
     }while(0)
 
 void CG_SHUDParserInit(void);
+void CG_SHUDParserTeardown(void);
 const superHUDConfigElement_t* CG_SHUDFindConfigElementItem(const char* name);
 const superHUDConfigCommand_t* CG_SHUDFindConfigCommandItem(const char* name);
 
@@ -339,8 +339,8 @@ void CG_SHUDFileInfoTeardown(configFileInfo_t* cfi);
 qboolean CG_SHUDFileInfoGoToChar(configFileInfo_t* cfi, char to, qboolean next);
 void CG_SHUDFileInfoSkipSpaces(configFileInfo_t* cfi);
 qboolean CG_SHUDFileInfoSkipCommandEnd(configFileInfo_t* cfi);
-const superhudConfigParseElement_t CG_SHUDFileInfoGetElementItem(configFileInfo_t* cfi);
-const superhudConfigParseCommand_t CG_SHUDFileInfoGetCommandItem(configFileInfo_t* cfi);
+superhudConfigParseElement_t CG_SHUDFileInfoGetElementItem(configFileInfo_t* cfi);
+superhudConfigParseCommand_t CG_SHUDFileInfoGetCommandItem(configFileInfo_t* cfi);
 
 void* CG_SHUDElementFPSCreate(const superhudConfig_t* config);
 void CG_SHUDElementFPSRoutine(void* context);

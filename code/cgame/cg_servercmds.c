@@ -187,8 +187,16 @@ void CG_SetConfigValues(void)
 {
 	const char* s;
 
-	cgs.scores1 = atoi(CG_ConfigString(CS_SCORES1));
-	cgs.scores2 = atoi(CG_ConfigString(CS_SCORES2));
+	s = CG_ConfigString(CS_SCORES1);
+	cgs.scores1 = atoi(s);
+	cgs.osp.osp_teamcount1 = -1;
+	Q_sscanf(s, "%i %i", &cgs.scores1, &cgs.osp.osp_teamcount1);
+
+	s = CG_ConfigString(CS_SCORES2);
+	cgs.scores2 = atoi(s);
+	cgs.osp.osp_teamcount2 = -1;
+	Q_sscanf(s, "%i %i", &cgs.scores2, &cgs.osp.osp_teamcount2);
+
 	cgs.levelStartTime = atoi(CG_ConfigString(CS_LEVEL_START_TIME));
 	if (cgs.gametype == GT_CTF)
 	{
@@ -210,7 +218,7 @@ void CG_ShaderStateChanged(void)
 	char newShader[MAX_QPATH];
 	char timeOffset[16];
 	const char* o;
-	char* n, *t;
+	char* n, * t;
 
 	o = CG_ConfigString(CS_SHADERSTATE);
 	while (o && *o)
@@ -422,7 +430,7 @@ void CG_AddToTeamChat(char* str, int size)
 	int w;
 	int h;
 	int chatHeight;
-	char* p, *ls;
+	char* p, * ls;
 	int lastcolor;
 	int overlayWidth;
 	int teamchatWidth;
@@ -989,7 +997,7 @@ static void CG_InjectCustomLoc(char* str, int size)
 
 	if (customLocationsEnabled != 0)
 	{
-		char* cloc_begin, *cloc_end;
+		char* cloc_begin, * cloc_end;
 		int free_left;
 		vec3_t cloc;
 		if (CG_CustomLocationsTeamChatCode(str, cloc, &cloc_begin, &cloc_end))
