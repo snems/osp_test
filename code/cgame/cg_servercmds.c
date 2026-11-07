@@ -91,14 +91,23 @@ static void CG_ParseTeamInfo(void)
 	clientInfo_t* ci;
 
 	numSortedTeamPlayers = atoi(CG_Argv(1));
-	if (numSortedTeamPlayers > TEAM_MAXOVERLAY)
+	// the count and every client number come from the server: clamp the count to the
+	// overlay table and to what the command actually carries, reject bad client numbers
+	if (numSortedTeamPlayers < 0 || numSortedTeamPlayers > TEAM_MAXOVERLAY ||
+	        numSortedTeamPlayers * 6 + 2 > trap_Argc())
 	{
-		numSortedTeamPlayers = TEAM_MAXOVERLAY;
+		numSortedTeamPlayers = 0;
+		return;
 	}
 
 	for (i = 0 ; i < numSortedTeamPlayers ; i++)
 	{
 		client = atoi(CG_Argv(i * 6 + 2));
+		if (client < 0 || client >= MAX_CLIENTS)
+		{
+			numSortedTeamPlayers = 0;
+			return;
+		}
 
 		ci = &cgs.clientinfo[ client ];
 
@@ -109,9 +118,17 @@ static void CG_ParseTeamInfo(void)
 			CG_CustomLocationsSetLocation(CG_Argv(i * 6 + 3), ci->customLocation);
 		}
 		ci->location = atoi(CG_Argv(i * 6 + 3));
+		if (ci->location < 0 || ci->location >= MAX_LOCATIONS)
+		{
+			ci->location = 0;
+		}
 		ci->health = atoi(CG_Argv(i * 6 + 4));
 		ci->armor = atoi(CG_Argv(i * 6 + 5));
 		ci->curWeapon = atoi(CG_Argv(i * 6 + 6));
+		if (ci->curWeapon < 0 || ci->curWeapon >= WP_NUM_WEAPONS)
+		{
+			ci->curWeapon = WP_NONE;
+		}
 		ci->powerups = atoi(CG_Argv(i * 6 + 7));
 	}
 }
@@ -139,6 +156,11 @@ void CG_ParseServerinfo(void)
 	cgs.capturelimit = atoi(Info_ValueForKey(info, "capturelimit"));
 	cgs.timelimit = atoi(Info_ValueForKey(info, "timelimit"));
 	cgs.maxclients = atoi(Info_ValueForKey(info, "sv_maxclients"));
+	// drives loops over cgs.clientinfo[MAX_CLIENTS]; the value is server-supplied
+	if (cgs.maxclients < 1 || cgs.maxclients > MAX_CLIENTS)
+	{
+		cgs.maxclients = MAX_CLIENTS;
+	}
 	mapname = Info_ValueForKey(info, "mapname");
 	Com_sprintf(cgs.mapname, sizeof(cgs.mapname), "maps/%s.bsp", mapname);
 	Q_strncpyz(cgs.redTeam, Info_ValueForKey(info, "g_redTeam"), sizeof(cgs.redTeam));
@@ -178,6 +200,25 @@ static void CG_ParseWarmup(void)
 
 /*
 ================
+CG_FlagStatusValue
+
+One character of CS_FLAGSTATUS. The string comes from the server and the
+values index arrays, so anything outside 0..max-1 is read as 0
+================
+*/
+static int CG_FlagStatusValue(char c, int max)
+{
+	int value = c - '0';
+
+	if (value < 0 || value >= max)
+	{
+		return 0;
+	}
+	return value;
+}
+
+/*
+================
 CG_SetConfigValues
 
 Called on load to set the initial values from configure strings
@@ -190,19 +231,19 @@ void CG_SetConfigValues(void)
 	s = CG_ConfigString(CS_SCORES1);
 	cgs.scores1 = atoi(s);
 	cgs.osp.osp_teamcount1 = -1;
-	Q_sscanf(s, "%i %i", &cgs.scores1, &cgs.osp.osp_teamcount1);
+	sscanf(s, "%i %i", &cgs.scores1, &cgs.osp.osp_teamcount1);
 
 	s = CG_ConfigString(CS_SCORES2);
 	cgs.scores2 = atoi(s);
 	cgs.osp.osp_teamcount2 = -1;
-	Q_sscanf(s, "%i %i", &cgs.scores2, &cgs.osp.osp_teamcount2);
+	sscanf(s, "%i %i", &cgs.scores2, &cgs.osp.osp_teamcount2);
 
 	cgs.levelStartTime = atoi(CG_ConfigString(CS_LEVEL_START_TIME));
 	if (cgs.gametype == GT_CTF)
 	{
 		s = CG_ConfigString(CS_FLAGSTATUS);
-		cgs.redflag = s[0] - '0';
-		cgs.blueflag = s[1] - '0';
+		cgs.redflag = CG_FlagStatusValue(s[0], 3);
+		cgs.blueflag = CG_FlagStatusValue(s[1], 3);
 	}
 	cg.warmup = atoi(CG_ConfigString(CS_WARMUP));
 }
@@ -226,12 +267,21 @@ void CG_ShaderStateChanged(void)
 		n = strstr(o, "=");
 		if (n && *n)
 		{
+			// the lengths come from the configstring: never longer than the buffers
+			if (n - o >= sizeof(originalShader))
+			{
+				break;
+			}
 			strncpy(originalShader, o, n - o);
 			originalShader[n - o] = 0;
 			n++;
 			t = strstr(n, ":");
 			if (t && *t)
 			{
+				if (t - n >= sizeof(newShader))
+				{
+					break;
+				}
 				strncpy(newShader, n, t - n);
 				newShader[t - n] = 0;
 			}
@@ -243,6 +293,10 @@ void CG_ShaderStateChanged(void)
 			o = strstr(t, "@");
 			if (o)
 			{
+				if (o - t >= sizeof(timeOffset))
+				{
+					break;
+				}
 				strncpy(timeOffset, t, o - t);
 				timeOffset[o - t] = 0;
 				o++;
@@ -292,12 +346,12 @@ static void CG_ConfigStringModified(void)
 	else if (num == CS_SCORES1)
 	{
 		cgs.osp.osp_teamcount1 = -1;
-		Q_sscanf(str, "%i %i", &cgs.scores1, &cgs.osp.osp_teamcount1);
+		sscanf(str, "%i %i", &cgs.scores1, &cgs.osp.osp_teamcount1);
 	}
 	else if (num == CS_SCORES2)
 	{
 		cgs.osp.osp_teamcount2 = -1;
-		Q_sscanf(str, "%i %i", &cgs.scores2, &cgs.osp.osp_teamcount2);
+		sscanf(str, "%i %i", &cgs.scores2, &cgs.osp.osp_teamcount2);
 	}
 	else if (num == CS_LEVEL_START_TIME)
 	{
@@ -356,33 +410,34 @@ static void CG_ConfigStringModified(void)
 		if (cgs.gametype == GT_CTF)
 		{
 			// format is rb where its red/blue, 0 is at base, 1 is taken, 2 is dropped
-			cgs.redflag = str[0] - '0';
-			cgs.blueflag = str[1] - '0';
+			cgs.redflag = CG_FlagStatusValue(str[0], 3);
+			cgs.blueflag = CG_FlagStatusValue(str[1], 3);
 			if (strlen(str) > 3)
 			{
+				// the flag carriers, as client numbers
 				cgs.osp.flagStatus = 1;
-				cgs.osp.redflag = str[2] - '0';
-				cgs.osp.blueflag = str[3] - '0';
+				cgs.osp.redflag = CG_FlagStatusValue(str[2], MAX_CLIENTS);
+				cgs.osp.blueflag = CG_FlagStatusValue(str[3], MAX_CLIENTS);
 			}
 		}
 	}
-	else if (num == CS_OSP_ALLOW_PMOVE)
+	else if (num == CS_OSP_PMOVEFIXED)
 	{
 		CG_OSPConfigPmoveSet(atoi(str));
 	}
-	else if (num == CS_OSP_MAXPACKETS_MIN)
+	else if (num == CS_OSP_MAXPACKETSMIN)
 	{
 		CG_OSPConfigMinMaxPacketsSet(atoi(str));
 	}
-	else if (num == CS_OSP_MAXPACKETS_MAX)
+	else if (num == CS_OSP_MAXPACKETSMAX)
 	{
 		CG_OSPConfigMaxMaxPacketsSet(atoi(str));
 	}
-	else if (num == CS_OSP_TIMENUDGE_MIN)
+	else if (num == CS_OSP_TIMENUDGEMIN)
 	{
 		CG_OSPConfigMinTimenudgeSet(atoi(str));
 	}
-	else if (num == CS_OSP_TIMENUDGE_MAX)
+	else if (num == CS_OSP_TIMENUDGEMAX)
 	{
 		CG_OSPConfigMaxTimenudgeSet(atoi(str));
 	}
@@ -390,24 +445,24 @@ static void CG_ConfigStringModified(void)
 	{
 		CG_OSPConfig0x368Set(atoi(str) & 1);
 	}
-	else if (num == CS_OSP_CLAN_BASE_TEAM_DM)
+	else if (num == CS_OSP_CUSTOMMODE)
 	{
 		CG_OSPConfigClanBaseTDMSet(atoi(str));
 	}
-	else if (num == CS_OSP_CUSTOM_CLIENT)
+	else if (num == CS_OSP_CUSTOMCLIENT)
 	{
 		CG_OSPConfigCustomClientSet(atoi(str));
 		CG_OSPCvarsRestrictValues();
 	}
-	else if (num == CS_OSP_CUSTOM_CLIENT2)
+	else if (num == CS_OSP_CUSTOMCLIENT2)
 	{
 		CG_OSPConfigCustomClient2Set(atoi(str));
 	}
-	else if (num == CS_OSP_SERVER_MODE)
+	else if (num == CS_OSP_PHYSICS)
 	{
 		CG_OSPConfigModeSet(atoi(str));
 	}
-	else if (num == CS_OSP_FREEZE_GAME_TYPE)
+	else if (num == CS_OSP_FREEZETAG)
 	{
 		CG_OSPConfigFreezeModeSet(atoi(str));
 	}
@@ -431,6 +486,7 @@ void CG_AddToTeamChat(char* str, int size)
 	int h;
 	int chatHeight;
 	char* p, * ls;
+	char* lineStart;    // start of the line buffer p writes to
 	int lastcolor;
 	int overlayWidth;
 	int teamchatWidth;
@@ -453,6 +509,7 @@ void CG_AddToTeamChat(char* str, int size)
 
 	len = 0;
 	p = cgs.teamChatMsgs[cgs.teamChatPos % chatHeight];
+	lineStart = p;
 	*p = 0;
 	lastcolor = '7';
 	ls = NULL;
@@ -472,7 +529,9 @@ void CG_AddToTeamChat(char* str, int size)
 	(*(p) = 0);
 	while (*str)
 	{
-		if (len > teamchatWidth - 1)
+		// wrap on visible width, and also on raw bytes: colour pairs are copied without being
+		// counted, so a text made of colour codes would otherwise run past the line buffer
+		if (len > teamchatWidth - 1 || p - lineStart >= TEAMCHAT_WIDTH * 3 - 2)
 		{
 			if (ls)
 			{
@@ -495,6 +554,7 @@ void CG_AddToTeamChat(char* str, int size)
 			{
 				p = cgs.teamChatMsgs[cgs.teamChatPos % chatHeight];
 			}
+			lineStart = p;
 			*p = 0;
 			*p++ = Q_COLOR_ESCAPE;
 			*p++ = lastcolor;
@@ -744,9 +804,15 @@ static void CG_OSPPrintXStats(void)
 	client_id = atoi(CG_Argv(index++));
 	wstats_condition = atoi(CG_Argv(index++));
 
+	// the client number comes from the server
+	if (client_id < 0 || client_id >= MAX_CLIENTS)
+	{
+		return;
+	}
+
 	Q_strncpyz(&str[0], cgs.clientinfo[client_id].name, 32);
 
-	CG_Printf(va("\n^7Accuracy info for: ^3%s^7\n\n", str));
+	CG_Printf("\n^7Accuracy info for: ^3%s^7\n\n", str);
 	CG_Printf("Weapon        Accrcy Hits/Atts Kills Deaths Pickup Drops\n");
 	CG_Printf("--------------------------------------------------------\n");
 	if (wstats_condition == 0)
@@ -769,7 +835,7 @@ static void CG_OSPPrintXStats(void)
 			kills_value = atoi(CG_Argv(index++));
 			deaths_value = atoi(CG_Argv(index++));
 
-			CG_Printf(va("^3%-12s: ", weaponNames[i]));
+			CG_Printf("^3%-12s: ", weaponNames[i]);
 
 			if (atts_value & cgs.osp.stats_mask || hits_value & cgs.osp.stats_mask)
 			{
@@ -781,7 +847,7 @@ static void CG_OSPPrintXStats(void)
 				{
 					accuracy = 100.0 * ((hits_value & cgs.osp.stats_mask) / (float)(atts_value & cgs.osp.stats_mask));
 				}
-				CG_Printf(va("^7%6.1f ^5%4d/%-4d ", accuracy, hits_value & cgs.osp.stats_mask, atts_value & cgs.osp.stats_mask));
+				CG_Printf("^7%6.1f ^5%4d/%-4d ", accuracy, hits_value & cgs.osp.stats_mask, atts_value & cgs.osp.stats_mask);
 				damage_activity = qtrue;
 			}
 			else
@@ -795,11 +861,11 @@ static void CG_OSPPrintXStats(void)
 
 			if (i > 2)
 			{
-				CG_Printf(va("^2%5d ^1%6d ^3%6d ^1%5d\n", kills_value, deaths_value, atts_value >> cgs.osp.stats_shift, hits_value >> cgs.osp.stats_shift));
+				CG_Printf("^2%5d ^1%6d ^3%6d ^1%5d\n", kills_value, deaths_value, atts_value >> cgs.osp.stats_shift, hits_value >> cgs.osp.stats_shift);
 			}
 			else
 			{
-				CG_Printf(va("^2%5d ^1%6d\n", kills_value, deaths_value));
+				CG_Printf("^2%5d ^1%6d\n", kills_value, deaths_value);
 			}
 		}
 	}
@@ -837,7 +903,7 @@ static void CG_OSPPrintXStats(void)
 		tmp_str2[0] = 0;
 		if (megahealth != 0)
 		{
-			strcpy(tmp_str, va("^2(^7%d ^5MH^2)", megahealth));
+			Com_sprintf(tmp_str, sizeof(tmp_str), "^2(^7%d ^5MH^2)", megahealth);
 		}
 		if (green_armor != 0)
 		{
@@ -850,7 +916,7 @@ static void CG_OSPPrintXStats(void)
 				char_ptr1 = "^7,";
 			}
 
-			strcpy(tmp_str, va("^2(^7%d ^3GA%s", green_armor, char_ptr1));
+			Com_sprintf(tmp_str, sizeof(tmp_str), "^2(^7%d ^3GA%s", green_armor, char_ptr1);
 		}
 
 		if (yellow_armor != 0)
@@ -872,7 +938,7 @@ static void CG_OSPPrintXStats(void)
 					char_ptr2 = "^2)";
 				}
 			}
-			strcat(tmp_str, va("%s%d ^3YA%s", char_ptr1, yellow_armor, char_ptr2));
+			Q_strcat(tmp_str, sizeof(tmp_str), va("%s%d ^3YA%s", char_ptr1, yellow_armor, char_ptr2));
 		}
 		if (red_armor != 0)
 		{
@@ -881,7 +947,7 @@ static void CG_OSPPrintXStats(void)
 			{
 				char_ptr1 = "^2(^7";
 			}
-			strcat(tmp_str, va("%s%d ^1RA^2)", char_ptr1, red_armor));
+			Q_strcat(tmp_str, sizeof(tmp_str), va("%s%d ^1RA^2)", char_ptr1, red_armor));
 		}
 
 		if (damage_activity != 0)
@@ -909,8 +975,10 @@ static void CG_OSPPrintSSet(void)
 	argNum = trap_Argc();
 	for (k = 0, buf[0] = 0, i = 1; i < argNum; i += 2)
 	{
-		strcat(buf, va("%s%20s ", prefix, CG_Argv(i)));
-		strcat(buf, va("%-3s", CG_Argv((i + 1))));
+		// the arguments come from the server: bounded appends, and no more than one
+		// setting name / value per column
+		Q_strcat(buf, sizeof(buf), va("%s%20.20s ", prefix, CG_Argv(i)));
+		Q_strcat(buf, sizeof(buf), va("%-3.32s", CG_Argv((i + 1))));
 
 		prefix = "  ";
 		if (k++ == 3)
@@ -928,10 +996,143 @@ static void CG_OSPPrintSSet(void)
 	}
 }
 
+/*
+=================
+CG_StuffSafeName
+
+A demo / screenshot name sent in a stuff command, such as
+"Player1-vs-Player2-q3dm6-(Player1)-2026.11.02-15.30.00". The server only
+removes \ / : " * ? < > | and colour codes, so player and host names keep
+any other byte 0x01-0xff ("..", "$", clan tag characters). Refuse only
+what could end the quoted argument or leave the demos / screenshots
+directory
+=================
+*/
+static qboolean CG_StuffSafeName(const char* name)
+{
+	const char* p;
+
+	if (!*name)
+	{
+		return qfalse;
+	}
+	for (p = name; *p; ++p)
+	{
+		if (strchr("\"\n\r;\\/:", *p))
+		{
+			return qfalse;
+		}
+	}
+	return qtrue;
+}
+
+/*
+=================
+CG_StuffSafeTextPath
+
+The condump file of the OSP stats dump: a relative .txt path such as
+"stats/2026.11.02/153000.txt"
+=================
+*/
+static qboolean CG_StuffSafeTextPath(const char* path)
+{
+	const char* p;
+	int len;
+
+	len = strlen(path);
+	if (len < 5 || Q_stricmp(path + len - 4, ".txt") || *path == '/' || strstr(path, ".."))
+	{
+		return qfalse;
+	}
+	for (p = path; *p; ++p)
+	{
+		if (!((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') || (*p >= '0' && *p <= '9') ||
+		        *p == '_' || *p == '-' || *p == '.' || *p == '/'))
+		{
+			return qfalse;
+		}
+	}
+	return qtrue;
+}
+
+/*
+=================
+CG_ServerCommandStuffOne
+
+One ';'-separated command of a stuff command. Only the commands OSP servers
+send are run (autorecord, autoscreenshot, the stats dump), and the console
+line is rebuilt from the parsed tokens
+=================
+*/
+static void CG_ServerCommandStuffOne(char* text)
+{
+	char tok[3][MAX_OSPATH];    // demo names (players, map, host, date) are often longer than MAX_QPATH
+	char* p;
+	int argc;
+
+	p = text;
+	for (argc = 0; argc < 3; ++argc)
+	{
+		Q_strncpyz(tok[argc], COM_ParseExt(&p, qfalse), sizeof(tok[argc]));
+		if (!tok[argc][0])
+		{
+			break;
+		}
+	}
+	if (argc == 0)
+	{
+		return;
+	}
+
+	// through the command buffer, so that it stays in order with the record around it
+	if (argc == 3 && (!Q_stricmp(tok[0], "set") || !Q_stricmp(tok[0], "seta")) && !Q_stricmp(tok[1], "g_synchronousClients") &&
+	        (!strcmp(tok[2], "0") || !strcmp(tok[2], "1")) && !*COM_ParseExt(&p, qfalse))
+	{
+		trap_SendConsoleCommand(va("set g_synchronousClients %s\n", tok[2]));
+		return;
+	}
+	if (argc == 1 && (!Q_stricmp(tok[0], "clear") || !Q_stricmp(tok[0], "currenttime") || !Q_stricmp(tok[0], "stoprecord")))
+	{
+		trap_SendConsoleCommand(va("%s\n", tok[0]));
+		return;
+	}
+	if (!Q_stricmp(tok[0], "record") || !Q_stricmp(tok[0], "screenshot") || !Q_stricmp(tok[0], "screenshotJPEG"))
+	{
+		if (argc == 1)
+		{
+			trap_SendConsoleCommand(va("%s\n", tok[0]));
+			return;
+		}
+		if (argc == 2 && CG_StuffSafeName(tok[1]))
+		{
+			trap_SendConsoleCommand(va("%s \"%s\"\n", tok[0], tok[1]));
+			return;
+		}
+	}
+	if (argc == 2 && !Q_stricmp(tok[0], "condump") && CG_StuffSafeTextPath(tok[1]))
+	{
+		trap_SendConsoleCommand(va("condump \"%s\"\n", tok[1]));
+		return;
+	}
+	CG_Printf("^3Ignored server stuff command: ^7%s\n", text);
+}
+
+/*
+=================
+CG_ServerCommandStuff
+
+stuff <text>: console commands sent by the server ('' -> ', ' -> ").
+The text used to be executed if it contained one of the allowed command
+names anywhere, so "clear;<anything>" ran any console command. Now every
+command is checked on its own, see CG_ServerCommandStuffOne
+=================
+*/
 static void CG_ServerCommandStuff(void)
 {
 	char command[1024];
 	char command2[1024];
+	char* s;
+	char* next;
 	int len;
 
 	if (cg.demoPlayback)
@@ -973,13 +1174,22 @@ static void CG_ServerCommandStuff(void)
 		*out = 0;
 	}
 
-	if (strstr(command2, "screenshot") ||
-	        strstr(command2, "set g_synchronous") ||
-	        strstr(command2, "clear") ||
-	        strstr(command2, "currenttime") ||
-	        strstr(command2, "stoprecord"))
+	for (s = command2; s && *s; s = next)
 	{
-		trap_SendConsoleCommand(command2);
+		next = s;
+		while (*next && *next != ';' && *next != '\n' && *next != '\r')
+		{
+			++next;
+		}
+		if (*next)
+		{
+			*next++ = 0;
+		}
+		else
+		{
+			next = NULL;
+		}
+		CG_ServerCommandStuffOne(s);
 	}
 }
 
@@ -1064,7 +1274,8 @@ static void CG_OSPAstats(qboolean top)
 	float treshold;
 
 	number_of_entries = atoi(CG_Argv(a++));
-	if (number_of_entries == 0)
+	// the count comes from the server: no more entries than players, nor than arguments
+	if (number_of_entries <= 0 || number_of_entries > MAX_CLIENTS || a + 1 + number_of_entries * 5 > trap_Argc())
 	{
 		return;
 	}
@@ -1081,12 +1292,17 @@ static void CG_OSPAstats(qboolean top)
 		kills = atoi(CG_Argv(a++));
 		deaths = atoi(CG_Argv(a++));
 
+		if (client_num < 0 || client_num >= MAX_CLIENTS)
+		{
+			continue;
+		}
+
 		acc = atts > 0 ? (float)(100 * atts) / (float)hits : 0;
 		level = top ? acc : (float)average + 0.999f;
 		treshold = top ? average : acc;
 		color_code = level >= treshold ? "^3" : "^7";
 
-		CG_Printf(va("%s%5.1f ^5%4d/%-4d ^2%5d ^1%6d %s%s\n", color_code, acc, hits, atts, kills, deaths, color_code, cgs.clientinfo[client_num].name_clean));
+		CG_Printf("%s%5.1f ^5%4d/%-4d ^2%5d ^1%6d %s%s\n", color_code, acc, hits, atts, kills, deaths, color_code, cgs.clientinfo[client_num].name_clean);
 	}
 	CG_Printf("\n\n");
 }
@@ -1128,9 +1344,16 @@ static void CG_OSPBstats(qboolean top)
 		kills = atoi(CG_Argv(a++));
 		deaths = atoi(CG_Argv(a++));
 
+		// weapon and client number come from the server
+		if (number_of_weapon < 0 || number_of_weapon >= sizeof(weaponShortNames) / sizeof(weaponShortNames[0]) ||
+		        client_num < 0 || client_num >= MAX_CLIENTS || a > trap_Argc())
+		{
+			break;
+		}
+
 		acc = atts > 0 ? (float)(100 * atts) / (float)hits : 0;
 
-		CG_Printf(va("^3%s ^7%5.1f ^5%4d/%-4d ^2%5d ^1%6d ^7%s\n", weaponShortNames[number_of_weapon], acc, atts, hits, kills, deaths, cgs.clientinfo[client_num].name_clean));
+		CG_Printf("^3%s ^7%5.1f ^5%4d/%-4d ^2%5d ^1%6d ^7%s\n", weaponShortNames[number_of_weapon], acc, atts, hits, kills, deaths, cgs.clientinfo[client_num].name_clean);
 
 		number_of_weapon = atoi(CG_Argv(a++));
 	}
@@ -1159,6 +1382,7 @@ void CG_ServerCommand(void)
 //psohtua
 	if (strcmp(cmd, "psohtua") == 0)
 	{
+		CG_OSPClientAuth_f();
 		return;
 	}
 //cp

@@ -1459,7 +1459,7 @@ static void CG_DrawHoldableItem(void)
 	int     value;
 
 	value = cg.snap->ps.stats[STAT_HOLDABLE_ITEM];
-	if (value)
+	if (value > 0 && value < bg_numItems)
 	{
 		CG_RegisterItemVisuals(value);
 		CG_DrawPicOld(640 - ICON_SIZE, (SCREEN_HEIGHT - ICON_SIZE) / 2, ICON_SIZE, ICON_SIZE, cg_items[ value ].icon);
@@ -1976,7 +1976,7 @@ void CG_OSPDrawIntermission(void)
 		         qtime.tm_year + 1900);
 
 		CG_OSPDrawStringWithShadow(8, 462, str, 10, 10, colorWhite, 0);
-		str = va("^B%s", CG_ConfigString(CS_OSP_VERSION_STR));
+		str = va("^B%s", CG_ConfigString(CS_OSP_VERSION));
 		CG_OSPDrawStringWithShadow(8, 450, str, 10, 10, colorYellow, 0);
 	}
 	CG_OSPSetColor(NULL);
